@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Glass Login with Smoke & Shards</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f2027, #2c5364, #00c6ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .login-box {
+      position: relative;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 40px;
+      border-radius: 20px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+      width: 340px;
+      text-align: center;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .login-box h2 {
+      color: #ffffff;
+      margin-bottom: 25px;
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    .login-box input {
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      outline: none;
+      transition: 0.3s;
+    }
+
+    .login-box input::placeholder {
+      color: #ddd;
+    }
+
+    .login-box input:focus {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    #loginBtn {
+      margin-top: 20px;
+      padding: 12px 25px;
+      background: linear-gradient(to right, #8e2de2, #4a00e0);
+      color: white;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      z-index: 2;
+      position: relative;
+      box-shadow: 0 0 12px rgba(138, 43, 226, 0.7);
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    #loginBtn:hover {
+      transform: scale(1.03);
+    }
+
+    .login-links {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .login-links a {
+      color: #ddd;
+      font-size: 14px;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .login-links a:hover {
+      color: #ffffff;
+      text-decoration: underline;
+    }
+
+    #shardCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box" id="box">
+    <h2>LOGIN</h2>
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="loginBtn">Login</button>
+    <div class="login-links">
+      <a href="#">Forgot Password?</a>
+      <a href="#">Sign Up</a>
+    </div>
+    <canvas id="shardCanvas"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("shardCanvas");
+    const ctx = canvas.getContext("2d");
+    const loginBtn = document.getElementById("loginBtn");
+    const username = document.getElementById("username");
+    const password = document.getElementById("password");
+    const box = document.getElementById("box");
+
+    canvas.width = box.offsetWidth;
+    canvas.height = box.offsetHeight;
+
+    let shards = [];
+    let smokeParticles = [];
+    let exploded = false;
+
+    function createEffect() {
+      const rect = loginBtn.getBoundingClientRect();
+      const boxRect = box.getBoundingClientRect();
+      const btnX = rect.left - boxRect.left;
+      const btnY = rect.top - boxRect.top;
+      const btnW = loginBtn.offsetWidth;
+      const btnH = loginBtn.offsetHeight;
+      const centerX = btnX + btnW / 2;
+      const centerY = btnY + btnH / 2;
+
+      // Create shards
+      const rows = 6, cols = 12;
+      const shardW = btnW / cols;
+      const shardH = btnH / rows;
+      shards = [];
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const baseX = btnX + x * shardW;
+          const baseY = btnY + y * shardH;
+          const angle = Math.random() * 2 * Math.PI;
+          const speed = Math.random() * 10 + 12;
+
+          shards.push({
+            x: baseX,
+            y: baseY,
+            w: shardW,
+            h: shardH,
+            dx: Math.cos(angle) * speed,
+            dy: Math.sin(angle) * speed,
+            rotation: 0,
+            rotationSpeed: (Math.random() - 0.5) * 0.15,
+            friction: 0.92,
+            bounce: 0.65,
+            originalX: baseX,
+            originalY: baseY,
+            assembling: false
+          });
+        }
+      }
+
+      // Create smoke
+      smokeParticles = [];
+      for (let i = 0; i < 200; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = Math.random() * 2 + 1;
+
+        smokeParticles.push({
+          x: centerX,
+          y: centerY,
+          dx: Math.cos(angle) * speed,
+          dy: Math.sin(angle) * speed,
+          radius: 20 + Math.random() * 30,
+          alpha: 0.06 + Math.random() * 0.04,
+          decay: 0.001 + Math.random() * 0.002
+        });
+      }
+
+      exploded = true;
+      loginBtn.style.visibility = 'hidden';
+      animateAll();
+    }
+
+    function animateAll() {
+      function step() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Smoke animation
+        smokeParticles.forEach(p => {
+          p.x += p.dx;
+          p.y += p.dy;
+          p.alpha -= p.decay;
+          p.radius += 0.3;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+          ctx.fill();
+        });
+        smokeParticles = smokeParticles.filter(p => p.alpha > 0);
+
+        // Shard animation
+        let moving = false;
+        shards.forEach(s => {
+          s.x += s.dx;
+          s.y += s.dy;
+          s.rotation += s.rotationSpeed;
+
+          if (s.x <= 0 || s.x + s.w >= canvas.width) {
+            s.dx *= -s.bounce;
+            s.x = Math.max(0, Math.min(canvas.width - s.w, s.x));
+          }
+          if (s.y <= 0 || s.y + s.h >= canvas.height) {
+            s.dy *= -s.bounce;
+            s.y = Math.max(0, Math.min(canvas.height - s.h, s.y));
+          }
+
+          s.dx *= s.friction;
+          s.dy *= s.friction;
+          s.rotationSpeed *= s.friction;
+
+          if (Math.abs(s.dx) > 0.1 || Math.abs(s.dy) > 0.1) {
+            moving = true;
+          }
+
+          drawShard(s);
+        });
+
+        if (moving || smokeParticles.length > 0) {
+          requestAnimationFrame(step);
+        }
+      }
+
+      step();
+    }
+
+    function drawShard(s) {
+      ctx.save();
+      ctx.translate(s.x + s.w / 2, s.y + s.h / 2);
+      ctx.rotate(s.rotation);
+      ctx.fillStyle = "#8e2de2";
+      ctx.fillRect(-s.w / 2, -s.h / 2, s.w, s.h);
+      ctx.restore();
+    }
+
+    function animateReassemble() {
+      shards.forEach(s => {
+        s.assembling = true;
+      });
+
+      function step() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let stillMoving = false;
+
+        shards.forEach(s => {
+          if (!s.assembling) return;
+
+          const dx = s.originalX - s.x;
+          const dy = s.originalY - s.y;
+
+          s.x += dx * 0.01; // slower animation
+          s.y += dy * 0.01;
+          s.rotation *= 0.95;
+
+          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+            stillMoving = true;
+          }
+
+          drawShard(s);
+        });
+
+        if (stillMoving) {
+          requestAnimationFrame(step);
+        } else {
+          shards = [];
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          loginBtn.style.visibility = 'visible';
+          exploded = false;
+        }
+      }
+
+      step();
+    }
+
+    loginBtn.addEventListener("click", () => {
+      if (!username.value.trim() || !password.value.trim()) {
+        if (!exploded) createEffect();
+      } else {
+        alert("Login Successful!");
+      }
+    });
+
+    [username, password].forEach(input => {
+      input.addEventListener("input", () => {
+        if (exploded) animateReassemble();
+      });
+    });
+  </script>
+</body>
+</html>
